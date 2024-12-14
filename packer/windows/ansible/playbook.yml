@@ -1,0 +1,36 @@
+- name: Install Nginx and configure SSL on Windows
+  hosts: all
+  tasks:
+    - name: Install Nginx
+      chocolatey.chocolatey.win_chocolatey:
+        name: nginx
+        state: present
+
+    - name: Create SSL directory
+      ansible.windows.win_file:
+        path: C:\nginx\ssl
+        state: directory
+
+    - name: Generate SSL certificate
+      ansible.windows.win_shell: |
+        $cert = New-SelfSignedCertificate -CertStoreLocation "cert:\LocalMachine\My" -DnsName "localhost"
+        $pwd = ConvertTo-SecureString -String "password" -Force -AsPlainText
+        $cert | Export-Pfx -FilePath "C:\nginx\ssl\nginx.pfx" -Password $pwd
+        openssl pkcs12 -in C:\nginx\ssl\nginx.pfx -out C:\nginx\ssl\nginx.crt -nodes
+        openssl pkcs12 -in C:\nginx\ssl\nginx.pfx -out C:\nginx\ssl\nginx.key -nocerts -nodes
+      args:
+        creates: "C:\\nginx\\ssl\\nginx.crt"
+
+    - name: Start Nginx service
+      ansible.windows.win_service:
+        name: nginx
+        start_mode: auto
+        state: started
+
+    - name: Open firewall for HTTPS traffic
+      community.windows.win_firewall_rule:
+        name: 'Allow Nginx HTTPS'
+        enable: true
+        localport: 443
+        protocol: TCP
+        action: allow

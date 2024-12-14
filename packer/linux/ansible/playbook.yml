@@ -1,0 +1,55 @@
+---
+- name: Install Nginx and configure SSL
+  hosts:
+    - all
+    - localhost
+  become: true
+  tasks:
+    # Install Nginx
+    - name: Install Nginx
+      ansible.builtin.apt:
+        name: nginx
+        state: present
+        update_cache: true
+
+    # Create SSL directory
+    - name: Create SSL directory
+      ansible.builtin.file:
+        path: /etc/nginx/ssl
+        state: directory
+        mode: '0755'
+
+    - name: Generate an OpenSSL private key
+      community.crypto.openssl_privatekey:
+        path: /etc/nginx/ssl/nginx.key
+        size: 2048
+        backup: true
+
+    # Generate self-signed certificate
+    - name: Generate a self-signed SSL certificate
+      community.crypto.x509_certificate:
+        path: /etc/nginx/ssl/nginx.crt
+        privatekey_path: /etc/nginx/ssl/nginx.key
+        state: present
+        provider: selfsigned
+
+    # Configure Nginx to use SSL
+    - name: Configure Nginx SSL
+      ansible.builtin.copy:
+        src: "{{ build_files_remote_path }}/files/nginx/default-site"
+        dest: /etc/nginx/sites-available/default
+        mode: "0644"
+      notify: Reload Nginx
+
+    - name: Nginx Service
+      ansible.builtin.service:
+        name: nginx
+        state: started
+        enabled: true
+
+  handlers:
+    # Reload Nginx
+    - name: Reload Nginx
+      ansible.builtin.service:
+        name: nginx
+        state: reloaded
