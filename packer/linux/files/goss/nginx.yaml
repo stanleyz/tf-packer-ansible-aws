@@ -1,0 +1,18 @@
+package:
+  nginx:
+    installed: true
+
+service:
+  nginx:
+    running: true
+    enabled: true
+
+file:
+  /etc/nginx/ssl/nginx.crt:
+    exists: true
+  /etc/nginx/ssl/nginx.key:
+    exists: true
+
+port:
+  443:
+    listening: true
